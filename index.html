@@ -1,0 +1,283 @@
+﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>WebSimulation</title>
+
+    <link rel="stylesheet" href="TemplateData/style.css">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #111;
+        }
+
+        #unity-container {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #111;
+        }
+
+        #game-wrapper {
+            position: relative;
+            width: min(960px, 100vw, 160vh);
+            aspect-ratio: 16 / 10;
+        }
+
+        #unity-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #231F20;
+            outline: none;
+        }
+
+        #unity-loading-bar {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 180px;
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        #loading-text {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        #unity-progress-bar-empty {
+            width: 100%;
+            height: 8px;
+            background: #444;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #unity-progress-bar-full {
+            width: 0%;
+            height: 100%;
+            background: #4caf50;
+            transition: width 0.15s linear;
+        }
+
+        #unity-warning {
+            display: none;
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(90%, 600px);
+            z-index: 20;
+            font-family: Arial, sans-serif;
+        }
+
+        #custom-fullscreen {
+            position: absolute;
+            right: 12px;
+            bottom: 12px;
+            z-index: 10;
+            padding: 9px 15px;
+            border: 0;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        #custom-fullscreen:hover {
+            background: #333;
+        }
+
+        /* Browser fullscreen */
+        #game-wrapper:fullscreen {
+            width: 100vw;
+            height: 100vh;
+            aspect-ratio: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #111;
+        }
+
+        #game-wrapper:fullscreen #unity-canvas {
+            width: min(100vw, 160vh);
+            height: auto;
+            aspect-ratio: 16 / 10;
+        }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            #game-wrapper {
+                width: min(100vw, 160vh);
+            }
+
+            #custom-fullscreen {
+                right: 8px;
+                bottom: 8px;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="unity-container">
+        <div id="game-wrapper">
+
+            <canvas id="unity-canvas"
+                    width="960"
+                    height="600"
+                    tabindex="-1">
+            </canvas>
+
+            <div id="unity-loading-bar">
+                <div id="loading-text">Loading...</div>
+                <div id="unity-progress-bar-empty">
+                    <div id="unity-progress-bar-full"></div>
+                </div>
+            </div>
+
+            <div id="unity-warning"></div>
+
+            <button id="custom-fullscreen" type="button">
+                ⛶ Fullscreen
+            </button>
+
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.querySelector("#unity-canvas");
+        const wrapper = document.querySelector("#game-wrapper");
+        const fullscreenButton = document.querySelector("#custom-fullscreen");
+        const loadingBar = document.querySelector("#unity-loading-bar");
+        const progressBar = document.querySelector("#unity-progress-bar-full");
+
+        function unityShowBanner(message, type) {
+            const warningBanner = document.querySelector("#unity-warning");
+
+            const messageElement = document.createElement("div");
+            messageElement.textContent = message;
+            messageElement.style.padding = "10px";
+            messageElement.style.marginBottom = "5px";
+
+            if (type === "error") {
+                messageElement.style.background = "#d32f2f";
+                messageElement.style.color = "white";
+            } else {
+                messageElement.style.background = "#ffeb3b";
+                messageElement.style.color = "#111";
+            }
+
+            warningBanner.appendChild(messageElement);
+            warningBanner.style.display = "block";
+
+            if (type !== "error") {
+                setTimeout(() => {
+                    messageElement.remove();
+
+                    if (warningBanner.children.length === 0) {
+                        warningBanner.style.display = "none";
+                    }
+                }, 5000);
+            }
+        }
+
+        const buildUrl = "Build";
+
+        const loaderUrl =
+            buildUrl + "/b3ac8679588fc4778a05197195ae0504.loader.js";
+
+        const config = {
+            arguments: [],
+
+            dataUrl:
+                buildUrl + "/5b1c94fd8f6ab3f46b5e1c4a1ed18086.data.unityweb",
+
+            frameworkUrl:
+                buildUrl + "/2a9a272e76e538f5d3b27d9343c94919.framework.js.unityweb",
+
+            codeUrl:
+                buildUrl + "/a2486629c9c5a1e2a0a0c06ce3b28b8b.wasm.unityweb",
+
+            streamingAssetsUrl: "StreamingAssets",
+
+            companyName: "WebSimulation",
+            productName: "WebSimulation",
+            productVersion: "1.1.1",
+
+            showBanner: unityShowBanner,
+
+            matchWebGLToCanvasSize: true
+        };
+
+        loadingBar.style.display = "block";
+
+        const script = document.createElement("script");
+        script.src = loaderUrl;
+
+        script.onload = () => {
+            createUnityInstance(
+                canvas,
+                config,
+                (progress) => {
+                    progressBar.style.width = (progress * 100) + "%";
+                }
+            ).then((unityInstance) => {
+
+                loadingBar.style.display = "none";
+
+                fullscreenButton.addEventListener("click", async () => {
+                    try {
+                        if (!document.fullscreenElement) {
+                            await wrapper.requestFullscreen();
+                        } else {
+                            await document.exitFullscreen();
+                        }
+                    } catch (error) {
+                        console.error("Fullscreen error:", error);
+                    }
+                });
+
+                document.addEventListener("fullscreenchange", () => {
+                    fullscreenButton.textContent =
+                        document.fullscreenElement
+                            ? "✕ Exit Fullscreen"
+                            : "⛶ Fullscreen";
+                });
+
+            }).catch((error) => {
+                console.error("Unity loading error:", error);
+                alert(error);
+            });
+        };
+
+        script.onerror = () => {
+            alert("Unable to load Unity WebGL loader. Check the Build folder and file names.");
+        };
+
+        document.body.appendChild(script);
+    </script>
+
+</body>
+</html>
