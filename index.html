@@ -2,7 +2,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
+
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
@@ -37,6 +38,8 @@
             position: relative;
             width: min(960px, 100vw, 160vh);
             aspect-ratio: 16 / 10;
+            background: #111;
+            overflow: hidden;
         }
 
         #unity-canvas {
@@ -47,36 +50,71 @@
             outline: none;
         }
 
+        /* LOADING SCREEN */
+
         #unity-loading-bar {
             position: absolute;
             left: 50%;
             top: 50%;
             transform: translate(-50%, -50%);
-            width: 180px;
+            width: 260px;
+            max-width: 80%;
             text-align: center;
             color: white;
             font-family: Arial, sans-serif;
+            z-index: 100;
+            display: block;
         }
 
         #loading-text {
-            margin-bottom: 10px;
-            font-size: 14px;
+            margin-bottom: 14px;
+            font-size: 15px;
+            font-weight: bold;
+            color: #ffffff;
         }
 
+        /* PROGRESS BACKGROUND */
+
         #unity-progress-bar-empty {
+            position: relative;
             width: 100%;
-            height: 8px;
-            background: #444;
-            border-radius: 10px;
+            height: 14px;
+            background-color: #333333;
+            border: 1px solid #777777;
+            border-radius: 20px;
             overflow: hidden;
         }
 
+        /* GREEN PROGRESS FILL */
+
         #unity-progress-bar-full {
+            position: absolute;
+            left: 0;
+            top: 0;
+
+            display: block;
+
             width: 0%;
             height: 100%;
-            background: #4caf50;
+
+            background: #00FF00 !important;
+            background-color: #00FF00 !important;
+
+            border-radius: 20px;
+
             transition: width 0.15s linear;
+
+            z-index: 2;
         }
+
+        #loading-percentage {
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #00FF00;
+        }
+
+        /* WARNING */
 
         #unity-warning {
             display: none;
@@ -85,15 +123,17 @@
             left: 50%;
             transform: translateX(-50%);
             width: min(90%, 600px);
-            z-index: 20;
+            z-index: 200;
             font-family: Arial, sans-serif;
         }
+
+        /* FULLSCREEN BUTTON */
 
         #custom-fullscreen {
             position: absolute;
             right: 12px;
             bottom: 12px;
-            z-index: 10;
+            z-index: 150;
             padding: 9px 15px;
             border: 0;
             border-radius: 6px;
@@ -107,7 +147,8 @@
             background: #333;
         }
 
-        /* Browser fullscreen */
+        /* FULLSCREEN */
+
         #game-wrapper:fullscreen {
             width: 100vw;
             height: 100vh;
@@ -124,7 +165,8 @@
             aspect-ratio: 16 / 10;
         }
 
-        /* Mobile */
+        /* MOBILE */
+
         @media (max-width: 600px) {
             #game-wrapper {
                 width: min(100vw, 160vh);
@@ -134,6 +176,7 @@
                 right: 8px;
                 bottom: 8px;
                 padding: 8px 12px;
+                font-size: 12px;
             }
         }
     </style>
@@ -141,143 +184,334 @@
 
 <body>
 
-    <div id="unity-container">
-        <div id="game-wrapper">
+<div id="unity-container">
 
-            <canvas id="unity-canvas"
-                    width="960"
-                    height="600"
-                    tabindex="-1">
-            </canvas>
+    <div id="game-wrapper">
 
-            <div id="unity-loading-bar">
-                <div id="loading-text">Loading...</div>
-                <div id="unity-progress-bar-empty">
-                    <div id="unity-progress-bar-full"></div>
-                </div>
+        <canvas id="unity-canvas"
+                width="960"
+                height="600"
+                tabindex="-1">
+        </canvas>
+
+        <!-- LOADING BAR -->
+
+        <div id="unity-loading-bar">
+
+            <div id="loading-text">
+                Loading Simulation...
             </div>
 
-            <div id="unity-warning"></div>
+            <div id="unity-progress-bar-empty">
 
-            <button id="custom-fullscreen" type="button">
-                ⛶ Fullscreen
-            </button>
+                <div id="unity-progress-bar-full"></div>
+
+            </div>
+
+            <div id="loading-percentage">
+                0%
+            </div>
 
         </div>
+
+        <!-- WARNING -->
+
+        <div id="unity-warning"></div>
+
+        <!-- FULLSCREEN -->
+
+        <button id="custom-fullscreen" type="button">
+            ⛶ Fullscreen
+        </button>
+
     </div>
 
-    <script>
-        const canvas = document.querySelector("#unity-canvas");
-        const wrapper = document.querySelector("#game-wrapper");
-        const fullscreenButton = document.querySelector("#custom-fullscreen");
-        const loadingBar = document.querySelector("#unity-loading-bar");
-        const progressBar = document.querySelector("#unity-progress-bar-full");
+</div>
 
-        function unityShowBanner(message, type) {
-            const warningBanner = document.querySelector("#unity-warning");
+<script>
 
-            const messageElement = document.createElement("div");
-            messageElement.textContent = message;
-            messageElement.style.padding = "10px";
-            messageElement.style.marginBottom = "5px";
+    // =====================================
+    // ELEMENT REFERENCES
+    // =====================================
 
-            if (type === "error") {
-                messageElement.style.background = "#d32f2f";
-                messageElement.style.color = "white";
-            } else {
-                messageElement.style.background = "#ffeb3b";
-                messageElement.style.color = "#111";
-            }
+    const canvas = document.getElementById("unity-canvas");
 
-            warningBanner.appendChild(messageElement);
-            warningBanner.style.display = "block";
+    const wrapper = document.getElementById("game-wrapper");
 
-            if (type !== "error") {
-                setTimeout(() => {
-                    messageElement.remove();
+    const fullscreenButton =
+        document.getElementById("custom-fullscreen");
 
-                    if (warningBanner.children.length === 0) {
-                        warningBanner.style.display = "none";
-                    }
-                }, 5000);
-            }
+    const loadingBar =
+        document.getElementById("unity-loading-bar");
+
+    const progressContainer =
+        document.getElementById("unity-progress-bar-empty");
+
+    const progressBar =
+        document.getElementById("unity-progress-bar-full");
+
+    const percentageText =
+        document.getElementById("loading-percentage");
+
+    const loadingText =
+        document.getElementById("loading-text");
+
+
+    // =====================================
+    // UPDATE PROGRESS BAR
+    // =====================================
+
+    function updateProgress(progress) {
+
+        const percentage = Math.max(
+            0,
+            Math.min(100, Math.round(progress * 100))
+        );
+
+        // Update green fill width
+        progressBar.style.width = percentage + "%";
+
+        // Force green color
+        progressBar.style.background = "#00FF00";
+
+        progressBar.style.backgroundColor = "#00FF00";
+
+        // Update percentage
+        percentageText.textContent = percentage + "%";
+
+        console.log("[Unity] Loading:", percentage + "%");
+    }
+
+
+    // =====================================
+    // UNITY WARNING BANNER
+    // =====================================
+
+    function unityShowBanner(message, type) {
+
+        const warningBanner =
+            document.getElementById("unity-warning");
+
+        const messageElement =
+            document.createElement("div");
+
+        messageElement.textContent = message;
+
+        messageElement.style.padding = "10px";
+
+        messageElement.style.marginBottom = "5px";
+
+        if (type === "error") {
+
+            messageElement.style.background = "#d32f2f";
+
+            messageElement.style.color = "#ffffff";
+
+        } else {
+
+            messageElement.style.background = "#ffeb3b";
+
+            messageElement.style.color = "#111111";
+
         }
 
-        const buildUrl = "Build";
+        warningBanner.appendChild(messageElement);
 
-        const loaderUrl =
-            buildUrl + "/b3ac8679588fc4778a05197195ae0504.loader.js";
+        warningBanner.style.display = "block";
 
-        const config = {
-            arguments: [],
+        if (type !== "error") {
 
-            dataUrl:
-                buildUrl + "/5b1c94fd8f6ab3f46b5e1c4a1ed18086.data.unityweb",
+            setTimeout(() => {
 
-            frameworkUrl:
-                buildUrl + "/2a9a272e76e538f5d3b27d9343c94919.framework.js.unityweb",
+                messageElement.remove();
 
-            codeUrl:
-                buildUrl + "/a2486629c9c5a1e2a0a0c06ce3b28b8b.wasm.unityweb",
+                if (warningBanner.children.length === 0) {
 
-            streamingAssetsUrl: "StreamingAssets",
+                    warningBanner.style.display = "none";
 
-            companyName: "WebSimulation",
-            productName: "WebSimulation",
-            productVersion: "1.1.1",
-
-            showBanner: unityShowBanner,
-
-            matchWebGLToCanvasSize: true
-        };
-
-        loadingBar.style.display = "block";
-
-        const script = document.createElement("script");
-        script.src = loaderUrl;
-
-        script.onload = () => {
-            createUnityInstance(
-                canvas,
-                config,
-                (progress) => {
-                    progressBar.style.width = (progress * 100) + "%";
                 }
-            ).then((unityInstance) => {
+
+            }, 5000);
+        }
+    }
+
+
+    // =====================================
+    // UNITY BUILD CONFIGURATION
+    // =====================================
+
+    const buildUrl = "Build";
+
+    const loaderUrl =
+        buildUrl + "/23237b546e7313cf6d1e483bd7409f17.loader.js";
+
+    const config = {
+
+        arguments: [],
+
+        dataUrl:
+            buildUrl + "/6017c951001296b7a85942b12d9d7d79.data.unityweb",
+
+        frameworkUrl:
+            buildUrl + "/2a9a272e76e538f5d3b27d9343c94919.framework.js.unityweb",
+
+        codeUrl:
+            buildUrl + "/dacabc0da1f02877f267ebb8807549f1.wasm.unityweb",
+
+        streamingAssetsUrl: "StreamingAssets",
+
+        companyName: "WebSimulation",
+
+        productName: "WebSimulation",
+
+        productVersion: "1.1.1",
+
+        showBanner: unityShowBanner,
+
+        matchWebGLToCanvasSize: true
+    };
+
+
+    // =====================================
+    // INITIAL LOADING STATE
+    // =====================================
+
+    loadingBar.style.display = "block";
+
+    progressBar.style.width = "0%";
+
+    percentageText.textContent = "0%";
+
+
+    // =====================================
+    // LOAD UNITY SCRIPT
+    // =====================================
+
+    const script = document.createElement("script");
+
+    script.src = loaderUrl;
+
+    script.onload = async () => {
+
+        console.log("[Unity] Loader loaded.");
+
+        try {
+
+            if (typeof createUnityInstance !== "function") {
+
+                throw new Error("createUnityInstance is unavailable.");
+            }
+
+            const unityInstance = await createUnityInstance(
+
+                canvas,
+
+                config,
+
+                (progress) => {
+
+                    updateProgress(progress);
+
+                }
+
+            );
+
+            // =====================================
+            // LOADING COMPLETE
+            // =====================================
+
+            updateProgress(1);
+
+            loadingText.textContent = "Loading Complete";
+
+            setTimeout(() => {
 
                 loadingBar.style.display = "none";
 
-                fullscreenButton.addEventListener("click", async () => {
-                    try {
-                        if (!document.fullscreenElement) {
-                            await wrapper.requestFullscreen();
-                        } else {
-                            await document.exitFullscreen();
-                        }
-                    } catch (error) {
-                        console.error("Fullscreen error:", error);
+            }, 400);
+
+
+            console.log("[Unity] Simulation loaded successfully.");
+
+
+            // =====================================
+            // FULLSCREEN BUTTON
+            // =====================================
+
+            fullscreenButton.addEventListener("click", async () => {
+
+                try {
+
+                    if (!document.fullscreenElement) {
+
+                        await wrapper.requestFullscreen();
+
+                    } else {
+
+                        await document.exitFullscreen();
+
                     }
-                });
 
-                document.addEventListener("fullscreenchange", () => {
-                    fullscreenButton.textContent =
-                        document.fullscreenElement
-                            ? "✕ Exit Fullscreen"
-                            : "⛶ Fullscreen";
-                });
+                } catch (error) {
 
-            }).catch((error) => {
-                console.error("Unity loading error:", error);
-                alert(error);
+                    console.error("[Unity] Fullscreen error:", error);
+
+                }
+
             });
-        };
 
-        script.onerror = () => {
-            alert("Unable to load Unity WebGL loader. Check the Build folder and file names.");
-        };
 
-        document.body.appendChild(script);
-    </script>
+            // =====================================
+            // FULLSCREEN BUTTON TEXT
+            // =====================================
+
+            document.addEventListener("fullscreenchange", () => {
+
+                fullscreenButton.textContent =
+                    document.fullscreenElement
+                        ? "✕ Exit Fullscreen"
+                        : "⛶ Fullscreen";
+
+            });
+
+        } catch (error) {
+
+            console.error("[Unity] Loading error:", error);
+
+            loadingBar.style.display = "block";
+
+            loadingText.textContent = "Failed to load simulation";
+
+            percentageText.textContent = "Please refresh the page";
+
+        }
+    };
+
+
+    // =====================================
+    // LOADER ERROR
+    // =====================================
+
+    script.onerror = () => {
+
+        console.error("[Unity] Unable to load loader:", loaderUrl);
+
+        loadingText.textContent =
+            "Unable to load Unity WebGL loader";
+
+        percentageText.textContent =
+            "Check Build folder";
+
+    };
+
+
+    // =====================================
+    // START LOADING
+    // =====================================
+
+    document.body.appendChild(script);
+
+</script>
 
 </body>
 </html>
